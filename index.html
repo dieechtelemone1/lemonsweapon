@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LemonsWeapon</title>
+  <meta name="description" content="LemonsWeapon – offizielle Webseite" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#top" class="logo">Lemons<span>Weapon</span></a>
+
+      <nav class="nav" id="nav">
+        <ul>
+          <li><a href="#home">Home</a></li>
+          <li><a href="#about">Über uns</a></li>
+          <li><a href="#features">Leistungen</a></li>
+          <li><a href="#contact">Kontakt</a></li>
+        </ul>
+      </nav>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Menü öffnen" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section id="home" class="hero">
+      <div class="container hero-inner">
+        <h1>Willkommen bei LemonsWeapon</h1>
+        <p class="hero-subtitle">Deine Basis-Webseite ist bereit – jetzt geht's an den Feinschliff.</p>
+        <a href="#contact" class="btn btn-primary">Jetzt Kontakt aufnehmen</a>
+      </div>
+    </section>
+
+    <section id="about" class="section">
+      <div class="container">
+        <h2>Über uns</h2>
+        <p>
+          Hier kommt ein kurzer Text über euch, euer Projekt oder euer Unternehmen.
+          Dieser Bereich lässt sich beliebig anpassen und erweitern.
+        </p>
+      </div>
+    </section>
+
+    <section id="features" class="section section-alt">
+      <div class="container">
+        <h2>Leistungen</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Leistung Eins</h3>
+            <p>Kurze Beschreibung der ersten Leistung oder des ersten Features.</p>
+          </div>
+          <div class="card">
+            <h3>Leistung Zwei</h3>
+            <p>Kurze Beschreibung der zweiten Leistung oder des zweiten Features.</p>
+          </div>
+          <div class="card">
+            <h3>Leistung Drei</h3>
+            <p>Kurze Beschreibung der dritten Leistung oder des dritten Features.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="section">
+      <div class="container">
+        <h2>Kontakt</h2>
+        <form class="contact-form" id="contactForm">
+          <div class="form-row">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required />
+          </div>
+          <div class="form-row">
+            <label for="email">E-Mail</label>
+            <input type="email" id="email" name="email" required />
+          </div>
+          <div class="form-row">
+            <label for="message">Nachricht</label>
+            <textarea id="message" name="message" rows="5" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Nachricht senden</button>
+          <p class="form-status" id="formStatus" role="status"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>&copy; <span id="year"></span> LemonsWeapon. Alle Rechte vorbehalten.</p>
+    </div>
+  </footer>
+
+  <script src="js/script.js"></script>
+</body>
+</html>
