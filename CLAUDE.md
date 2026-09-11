@@ -12,3 +12,8 @@ Jedes GMod-Addon in diesem Repo bekommt das Präfix `vn_`:
 
 Keine `README.md` und keine `addon.json` in neuen Addons anlegen – nur die
 Lua-Dateien.
+
+## Dateien ausliefern
+
+Bei Änderungen an einem bestehenden Addon nur die geänderte Lua-Datei
+schicken. Ein komplettes ZIP nur beim Start eines neuen Projekts.
