@@ -15,6 +15,8 @@ local DEFAULTS = {
 	vn_hud_color_r = "255",
 	vn_hud_color_g = "158",
 	vn_hud_color_b = "44",
+	vn_hud_gamemode = "1",
+	vn_hud_block = "",
 }
 
 local ConEnable    = CreateClientConVar("vn_hud_enable", DEFAULTS.vn_hud_enable, true, false, "Star Wars Cockpit HUD an/aus")
@@ -28,6 +30,8 @@ local ConAlpha     = CreateClientConVar("vn_hud_alpha", DEFAULTS.vn_hud_alpha, t
 local ConColR      = CreateClientConVar("vn_hud_color_r", DEFAULTS.vn_hud_color_r, true, false, "Akzentfarbe Rot-Anteil")
 local ConColG      = CreateClientConVar("vn_hud_color_g", DEFAULTS.vn_hud_color_g, true, false, "Akzentfarbe Gruen-Anteil")
 local ConColB      = CreateClientConVar("vn_hud_color_b", DEFAULTS.vn_hud_color_b, true, false, "Akzentfarbe Blau-Anteil")
+local ConGamemode  = CreateClientConVar("vn_hud_gamemode", DEFAULTS.vn_hud_gamemode, true, false, "HUD des Gamemodes (z.B. DarkRP) ausblenden")
+local ConBlock     = CreateClientConVar("vn_hud_block", DEFAULTS.vn_hud_block, true, false, "Komma-Liste von HUD-Hooks, die entfernt werden (siehe vn_hud_hooks)")
 
 local colBG         = Color(8, 12, 18, 215)
 local colTrack      = Color(255, 255, 255, 25)
@@ -263,12 +267,62 @@ local replacedBy = {
 	CHudCrosshair = ConCrosshair,
 }
 
+-- Gamemode HUDs are Lua, not engine elements. DarkRP and its derivatives run
+-- their panels through HUDShouldDraw under these names, so they can be hidden
+-- the same way; anything else needs vn_hud_block.
+local gamemodeElements = {
+	DarkRP_HUD = true,
+	DarkRP_LocalPlayerHUD = true,
+	DarkRP_EntityDisplay = true,
+	DarkRP_Hungermod = true,
+	DarkRP_Agenda = true,
+	DarkRP_ChatReceivers = true,
+}
+
 hook.Add("HUDShouldDraw", "vn_hud_hide_default", function(name)
 	if not ConEnable:GetBool() then return end
 
 	local replacement = replacedBy[name]
 	if replacement and replacement:GetBool() then return false end
+
+	if gamemodeElements[name] and ConGamemode:GetBool() then return false end
 end)
+
+-- Hooks named in vn_hud_block are stripped repeatedly: a gamemode that
+-- re-registers its HUD on spawn would otherwise come back.
+local blockedEvents = { "HUDPaint", "HUDPaintBackground", "HUDDrawTargetID" }
+
+local function StripBlockedHooks()
+	local list = ConBlock:GetString()
+	if list == "" then return end
+
+	for name in string.gmatch(list, "[^,%s]+") do
+		if name ~= "vn_hud_draw" then
+			for _, event in ipairs(blockedEvents) do
+				hook.Remove(event, name)
+			end
+		end
+	end
+end
+
+timer.Create("vn_hud_strip_blocked", 2, 0, StripBlockedHooks)
+cvars.AddChangeCallback("vn_hud_block", StripBlockedHooks, "vn_hud_strip")
+
+concommand.Add("vn_hud_hooks", function()
+	local hooks = hook.GetTable()
+
+	for _, event in ipairs(blockedEvents) do
+		MsgN("--- " .. event .. " ---")
+
+		for name in pairs(hooks[event] or {}) do
+			if isstring(name) and name ~= "vn_hud_draw" then
+				MsgN("  " .. name)
+			end
+		end
+	end
+
+	MsgN('Ausblenden mit: vn_hud_block "name1,name2"')
+end, nil, "Listet alle HUD-Hooks auf, die sich mit vn_hud_block ausblenden lassen")
 
 hook.Add("HUDPaint", "vn_hud_draw", function()
 	if not ConEnable:GetBool() then return end
@@ -303,6 +357,11 @@ hook.Add("PopulateToolMenu", "vn_hud_settings", function()
 		panel:CheckBox("Name / Job (oben mittig)", "vn_hud_identity")
 		panel:CheckBox("Chronometer (oben rechts)", "vn_hud_chrono")
 		panel:CheckBox("Ecken-Brackets", "vn_hud_brackets")
+
+		panel:Help("Fremde HUDs")
+		panel:CheckBox("Gamemode-HUD ausblenden (DarkRP)", "vn_hud_gamemode")
+		panel:TextEntry("Hooks ausblenden", "vn_hud_block")
+		panel:Button("Hook-Namen in der Konsole auflisten", "vn_hud_hooks")
 
 		panel:Help("Darstellung")
 		panel:NumSlider("Deckkraft", "vn_hud_alpha", 0, 255, 0)
