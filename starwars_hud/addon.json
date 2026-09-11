@@ -1,0 +1,6 @@
+{
+	"title": "Star Wars Cockpit HUD",
+	"type": "other",
+	"tags": ["fun", "roleplay"],
+	"ignore": ["*.psd", "*.vcproj", "*.svn*", "README.md"]
+}
