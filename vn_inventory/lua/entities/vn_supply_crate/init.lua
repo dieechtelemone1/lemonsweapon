@@ -5,14 +5,14 @@ include("shared.lua")
 local nextCrateNumber = 0
 
 function ENT:Initialize()
-	self:SetModel("models/Items/item_item_crate.mdl")
+	self:SetModel(self.CrateModel)
 	self:PhysicsInit(SOLID_VPHYSICS)
 	self:SetMoveType(MOVETYPE_VPHYSICS)
 	self:SetSolid(SOLID_VPHYSICS)
 	self:SetUseType(SIMPLE_USE)
 
 	nextCrateNumber = nextCrateNumber + 1
-	self:SetCrateName("Kiste " .. nextCrateNumber)
+	self:SetCrateName(self.DefaultName .. " " .. nextCrateNumber)
 	self:SetSupply(VN_LOG.StartSupply)
 	self:SetRequested(false)
 

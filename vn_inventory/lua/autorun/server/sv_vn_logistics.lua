@@ -22,7 +22,15 @@ local function NotifyLogistics(text)
 end
 
 local function Crates()
-	return ents.FindByClass("vn_supply_crate")
+	local found = {}
+
+	for class in pairs(VN_INV.CrateClasses) do
+		for _, crate in ipairs(ents.FindByClass(class)) do
+			found[#found + 1] = crate
+		end
+	end
+
+	return found
 end
 
 local function SendData(ply)
@@ -73,7 +81,7 @@ net.Receive("vn_log_request", function(_, ply)
 	nextAction[ply] = CurTime() + 1
 
 	local crate = net.ReadEntity()
-	if not IsValid(crate) or crate:GetClass() ~= "vn_supply_crate" then return end
+	if not VN_INV.CrateType(crate) then return end
 	if not ply:Alive() then return end
 	if ply:GetPos():Distance(crate:GetPos()) > VN_INV.CrateRange then return end
 
@@ -113,7 +121,7 @@ net.Receive("vn_log_deliver", function(_, ply)
 	if not VN_LOG.IsLogistics(ply) then return end
 
 	local crate = net.ReadEntity()
-	if not IsValid(crate) or crate:GetClass() ~= "vn_supply_crate" then return end
+	if not VN_INV.CrateType(crate) then return end
 
 	local request = requests[crate]
 	if request and request.eta > CurTime() then
@@ -153,7 +161,7 @@ concommand.Add("vn_log_name", function(ply, _, args)
 	if not IsValid(ply) or not ply:IsAdmin() then return end
 
 	local crate = ply:GetEyeTrace().Entity
-	if not IsValid(crate) or crate:GetClass() ~= "vn_supply_crate" then
+	if not VN_INV.CrateType(crate) then
 		Notify(ply, "Keine Versorgungskiste anvisiert.")
 		return
 	end

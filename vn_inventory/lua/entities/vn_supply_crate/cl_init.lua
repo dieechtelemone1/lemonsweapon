@@ -23,7 +23,8 @@ function ENT:Draw()
 	end
 
 	cam.Start3D2D(pos, ang, 0.1)
-		draw.SimpleText(string.upper(self:GetCrateName()), "VNINV_Title", 0, -46, Color(255, 158, 44), TEXT_ALIGN_CENTER)
+		draw.SimpleText(string.upper(self:GetCrateName()), "VNINV_Title", 0, -62, self.LabelColor, TEXT_ALIGN_CENTER)
+		draw.SimpleText(self.CrateLabel, "VNINV_Small", 0, -40, self.LabelColor, TEXT_ALIGN_CENTER)
 
 		surface.SetDrawColor(0, 0, 0, 180)
 		surface.DrawRect(-100, -18, 200, 14)

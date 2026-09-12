@@ -180,8 +180,11 @@ net.Receive("vn_inv_crate", function()
 
 	scroll:DockMargin(12, 8, 12, 12)
 
+	local crateType = VN_INV.CrateType(crate)
+
 	for _, id in ipairs(VN_INV.Order) do
 		local item = VN_INV.Get(id)
+		if item.crate == crateType then
 
 		local row = BuildRow(scroll, item, nil, "Nehmen", function()
 			if not IsValid(crate) then frame:Remove() return end
@@ -196,6 +199,8 @@ net.Receive("vn_inv_crate", function()
 			local affordable = IsValid(crate) and crate:GetSupply() >= item.cost
 			draw.SimpleText(item.cost .. " Vorrat", "VNINV_Small", w - 100, 30,
 				affordable and colDim or Color(235, 70, 60), TEXT_ALIGN_RIGHT)
+		end
+
 		end
 	end
 end)

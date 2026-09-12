@@ -18,6 +18,7 @@ function VN_INV.Register(id, data)
 	data.maxStack = data.maxStack or 10
 	data.consumed = data.consumed ~= false
 	data.cost = data.cost or 1
+	data.crate = data.crate or "supply"
 
 	if not VN_INV.Items[id] then
 		VN_INV.Order[#VN_INV.Order + 1] = id
@@ -28,6 +29,17 @@ end
 
 function VN_INV.Get(id)
 	return VN_INV.Items[id]
+end
+
+-- Every crate class and the item category it hands out.
+VN_INV.CrateClasses = {
+	vn_supply_crate = "supply",
+	vn_medic_crate = "medic",
+}
+
+function VN_INV.CrateType(ent)
+	if not IsValid(ent) then return nil end
+	return VN_INV.CrateClasses[ent:GetClass()]
 end
 
 -- Munition -------------------------------------------------------------

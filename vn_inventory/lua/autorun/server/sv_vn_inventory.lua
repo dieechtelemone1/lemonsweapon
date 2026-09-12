@@ -149,12 +149,13 @@ net.Receive("vn_inv_take", function(_, ply)
 	local crate = net.ReadEntity()
 	local id = net.ReadString()
 
-	if not IsValid(crate) or crate:GetClass() ~= "vn_supply_crate" then return end
+	local crateType = VN_INV.CrateType(crate)
+	if not crateType then return end
 	if not ply:Alive() then return end
 	if ply:GetPos():Distance(crate:GetPos()) > VN_INV.CrateRange then return end
 
 	local item = VN_INV.Get(id)
-	if not item then return end
+	if not item or item.crate ~= crateType then return end
 
 	if crate:GetSupply() < item.cost then
 		Notify(ply, "Die Kiste hat nicht genug Vorrat. Nachschub anfordern!")
