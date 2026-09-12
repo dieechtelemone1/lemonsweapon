@@ -5,6 +5,7 @@ util.AddNetworkString("vn_inv_use")
 util.AddNetworkString("vn_inv_crate")
 util.AddNetworkString("vn_inv_take")
 util.AddNetworkString("vn_inv_notify")
+util.AddNetworkString("vn_inv_drop")
 
 if not sql.TableExists("vn_inventory") then
 	sql.Query("CREATE TABLE vn_inventory (steamid TEXT PRIMARY KEY, data TEXT)")
@@ -13,11 +14,13 @@ end
 local inventories = {}
 local nextUse = {}
 
-local function Notify(ply, text)
+function VN_INV.Notify(ply, text)
 	net.Start("vn_inv_notify")
 	net.WriteString(text)
 	net.Send(ply)
 end
+
+local Notify = VN_INV.Notify
 
 local function Sync(ply)
 	local inv = inventories[ply:SteamID64()] or {}
@@ -149,6 +152,38 @@ net.Receive("vn_inv_use", function(_, ply)
 	if item.consumed then
 		VN_INV.TakeItem(ply, id, 1)
 	end
+end)
+
+net.Receive("vn_inv_drop", function(_, ply)
+	if (nextUse[ply] or 0) > CurTime() then return end
+	nextUse[ply] = CurTime() + VN_INV.UseCooldown
+
+	if not ply:Alive() then return end
+
+	local id = net.ReadString()
+	local item = VN_INV.Get(id)
+	if not item then return end
+
+	local inv = inventories[ply:SteamID64()]
+	if not inv or not inv[id] then return end
+
+	-- Drop just short of whatever the player is looking at, so the item never
+	-- ends up inside a wall or on the far side of it.
+	local trace = util.TraceLine({
+		start = ply:EyePos(),
+		endpos = ply:EyePos() + ply:GetAimVector() * 70,
+		filter = ply,
+	})
+
+	local ent = ents.Create("vn_dropped_item")
+	if not IsValid(ent) then return end
+
+	ent:SetItemId(id)
+	ent:SetPos(trace.HitPos - ply:GetAimVector() * 10)
+	ent:SetAngles(Angle(0, ply:EyeAngles().y, 0))
+	ent:Spawn()
+
+	VN_INV.TakeItem(ply, id, 1)
 end)
 
 net.Receive("vn_inv_take", function(_, ply)

@@ -9,6 +9,8 @@ VN_INV.Order = {}
 VN_INV.MaxSlots = 16
 VN_INV.CrateRange = 150
 VN_INV.UseCooldown = 0.4
+VN_INV.DropLifetime = 300  -- Sekunden, bis abgelegte Items wieder verschwinden
+VN_INV.DropModel = "models/Items/item_item_crate.mdl"
 
 function VN_INV.Register(id, data)
 	data.id = id
@@ -19,6 +21,7 @@ function VN_INV.Register(id, data)
 	data.consumed = data.consumed ~= false
 	data.cost = data.cost or 1
 	data.crate = data.crate or "supply"
+	data.dropModel = data.dropModel or VN_INV.DropModel
 
 	if not VN_INV.Items[id] then
 		VN_INV.Order[#VN_INV.Order + 1] = id
@@ -59,6 +62,7 @@ for _, box in ipairs(ammoBoxes) do
 		category = "Munition",
 		maxStack = 10,
 		cost = box.cost,
+		dropModel = "models/Items/BoxMRounds.mdl",
 		OnUse = function(ply)
 			ply:GiveAmmo(box.amount, box.ammo, true)
 			return true
@@ -74,6 +78,7 @@ VN_INV.Register("grenade", {
 	category = "Ausrüstung",
 	maxStack = 5,
 	cost = 6,
+	dropModel = "models/Items/grenadeAmmo.mdl",
 	OnUse = function(ply)
 		if not ply:HasWeapon("weapon_frag") then
 			ply:Give("weapon_frag")

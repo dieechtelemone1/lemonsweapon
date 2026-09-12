@@ -27,7 +27,8 @@ net.Receive("vn_inv_notify", function()
 	chat.AddText(colAccent, "[Inventar] ", colText, net.ReadString())
 end)
 
-local function BuildRow(parent, item, count, label, onClick)
+-- actions: Liste von { label, fn }, von rechts nach links angeordnet.
+local function BuildRow(parent, item, count, actions)
 	local row = parent:Add("DPanel")
 	row:Dock(TOP)
 	row:DockMargin(0, 0, 0, 4)
@@ -43,21 +44,25 @@ local function BuildRow(parent, item, count, label, onClick)
 		draw.SimpleText(item.desc, "VNINV_Small", 14, 28, colDim)
 
 		if count then
-			draw.SimpleText("x" .. count, "VNINV_Item", w - 100, 15, colAccent, TEXT_ALIGN_RIGHT)
+			draw.SimpleText("x" .. count, "VNINV_Item", w - row.textInset, 15, colAccent, TEXT_ALIGN_RIGHT)
 		end
 	end
 
-	local button = row:Add("DButton")
-	button:Dock(RIGHT)
-	button:DockMargin(0, 8, 8, 8)
-	button:SetWide(80)
-	button:SetText(label)
-	button:SetTextColor(colText)
-	button.Paint = function(self, w, h)
-		surface.SetDrawColor(self:IsHovered() and colAccent or Color(255, 255, 255, 25))
-		surface.DrawRect(0, 0, w, h)
+	row.textInset = 20 + #actions * 88
+
+	for _, action in ipairs(actions) do
+		local button = row:Add("DButton")
+		button:Dock(RIGHT)
+		button:DockMargin(0, 8, 8, 8)
+		button:SetWide(80)
+		button:SetText(action.label)
+		button:SetTextColor(colText)
+		button.Paint = function(self, w, h)
+			surface.SetDrawColor(self:IsHovered() and colAccent or Color(255, 255, 255, 25))
+			surface.DrawRect(0, 0, w, h)
+		end
+		button.DoClick = action.fn
 	end
-	button.DoClick = onClick
 
 	return row
 end
@@ -110,11 +115,24 @@ local function OpenInventory()
 				empty = false
 				local item = VN_INV.Get(id)
 
-				BuildRow(scroll, item, count, "Benutzen", function()
-					net.Start("vn_inv_use")
-					net.WriteString(id)
-					net.SendToServer()
-				end)
+				BuildRow(scroll, item, count, {
+					{
+						label = "Ablegen",
+						fn = function()
+							net.Start("vn_inv_drop")
+							net.WriteString(id)
+							net.SendToServer()
+						end,
+					},
+					{
+						label = "Benutzen",
+						fn = function()
+							net.Start("vn_inv_use")
+							net.WriteString(id)
+							net.SendToServer()
+						end,
+					},
+				})
 			end
 		end
 
@@ -133,6 +151,25 @@ local function OpenInventory()
 end
 
 concommand.Add("vn_inv", OpenInventory, nil, "Öffnet das Inventar")
+
+local ConKey = CreateClientConVar("vn_inv_key", tostring(KEY_I), true, false,
+	"Taste zum Öffnen des Inventars (KEY_-Nummer, 0 = aus)")
+
+hook.Add("PlayerButtonDown", "vn_inv_key", function(ply, button)
+	if ply ~= LocalPlayer() then return end
+	if button ~= ConKey:GetInt() then return end
+
+	-- Bei offenem Menü schließt dieselbe Taste wieder, sonst käme man mit
+	-- sichtbarem Mauszeiger nicht mehr heraus.
+	if IsValid(invFrame) then
+		invFrame:Remove()
+		return
+	end
+
+	if ply:IsTyping() or gui.IsGameUIVisible() or vgui.CursorVisible() then return end
+
+	OpenInventory()
+end)
 
 net.Receive("vn_inv_crate", function()
 	local crate = net.ReadEntity()
@@ -192,18 +229,21 @@ net.Receive("vn_inv_crate", function()
 		local item = VN_INV.Get(id)
 		if item.crate == crateType then
 
-		local row = BuildRow(scroll, item, nil, "Nehmen", function()
-			if not IsValid(crate) then frame:Remove() return end
+		local row = BuildRow(scroll, item, nil, { {
+			label = "Nehmen",
+			fn = function()
+				if not IsValid(crate) then frame:Remove() return end
 
-			net.Start("vn_inv_take")
-			net.WriteEntity(crate)
-			net.WriteString(id)
-			net.SendToServer()
-		end)
+				net.Start("vn_inv_take")
+				net.WriteEntity(crate)
+				net.WriteString(id)
+				net.SendToServer()
+			end,
+		} })
 
 		row.PaintOver = function(self, w, h)
 			local affordable = IsValid(crate) and crate:GetSupply() >= item.cost
-			draw.SimpleText(item.cost .. " Vorrat", "VNINV_Small", w - 100, 30,
+			draw.SimpleText(item.cost .. " Vorrat", "VNINV_Small", w - self.textInset, 30,
 				affordable and colDim or Color(235, 70, 60), TEXT_ALIGN_RIGHT)
 		end
 
