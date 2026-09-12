@@ -131,12 +131,59 @@ net.Receive("vn_inv_crate", function()
 	local crate = net.ReadEntity()
 	if not IsValid(crate) then return end
 
-	local frame, scroll = BuildFrame("Versorgungskiste")
+	local frame, scroll = BuildFrame(crate:GetCrateName())
+
+	local status = frame:Add("DPanel")
+	status:Dock(TOP)
+	status:DockMargin(12, 44, 12, 0)
+	status:SetTall(52)
+
+	status.Paint = function(self, w, h)
+		if not IsValid(crate) then return end
+
+		local supply = crate:GetSupply()
+		local frac = math.Clamp(supply / VN_LOG.MaxSupply, 0, 1)
+
+		local barColor = Color(90, 200, 110)
+		if supply <= 0 then
+			barColor = Color(235, 70, 60)
+		elseif frac < 0.3 then
+			barColor = Color(255, 196, 60)
+		end
+
+		draw.SimpleText("Vorrat", "VNINV_Small", 0, 0, colDim)
+		draw.SimpleText(supply .. " / " .. VN_LOG.MaxSupply, "VNINV_Small", w, 0, colDim, TEXT_ALIGN_RIGHT)
+
+		surface.SetDrawColor(0, 0, 0, 160)
+		surface.DrawRect(0, 18, w, 14)
+		surface.SetDrawColor(barColor)
+		surface.DrawRect(0, 18, w * frac, 14)
+	end
+
+	local request = frame:Add("DButton")
+	request:Dock(TOP)
+	request:DockMargin(12, 4, 12, 0)
+	request:SetTall(30)
+	request:SetText("Nachschub anfordern")
+	request:SetTextColor(colText)
+	request.Paint = function(self, w, h)
+		surface.SetDrawColor(self:IsHovered() and colAccent or Color(255, 255, 255, 25))
+		surface.DrawRect(0, 0, w, h)
+	end
+	request.DoClick = function()
+		if not IsValid(crate) then frame:Remove() return end
+
+		net.Start("vn_log_request")
+		net.WriteEntity(crate)
+		net.SendToServer()
+	end
+
+	scroll:DockMargin(12, 8, 12, 12)
 
 	for _, id in ipairs(VN_INV.Order) do
 		local item = VN_INV.Get(id)
 
-		BuildRow(scroll, item, nil, "Nehmen", function()
+		local row = BuildRow(scroll, item, nil, "Nehmen", function()
 			if not IsValid(crate) then frame:Remove() return end
 
 			net.Start("vn_inv_take")
@@ -144,6 +191,12 @@ net.Receive("vn_inv_crate", function()
 			net.WriteString(id)
 			net.SendToServer()
 		end)
+
+		row.PaintOver = function(self, w, h)
+			local affordable = IsValid(crate) and crate:GetSupply() >= item.cost
+			draw.SimpleText(item.cost .. " Vorrat", "VNINV_Small", w - 100, 30,
+				affordable and colDim or Color(235, 70, 60), TEXT_ALIGN_RIGHT)
+		end
 	end
 end)
 

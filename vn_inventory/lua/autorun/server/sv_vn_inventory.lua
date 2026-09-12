@@ -152,10 +152,24 @@ net.Receive("vn_inv_take", function(_, ply)
 	if not IsValid(crate) or crate:GetClass() ~= "vn_supply_crate" then return end
 	if not ply:Alive() then return end
 	if ply:GetPos():Distance(crate:GetPos()) > VN_INV.CrateRange then return end
-	if not VN_INV.Get(id) then return end
 
+	local item = VN_INV.Get(id)
+	if not item then return end
+
+	if crate:GetSupply() < item.cost then
+		Notify(ply, "Die Kiste hat nicht genug Vorrat. Nachschub anfordern!")
+		return
+	end
+
+	-- The crate is only charged once the item is actually in the inventory, so
+	-- a full inventory never burns supply.
 	local ok, reason = VN_INV.GiveItem(ply, id, 1)
-	if not ok and reason then Notify(ply, reason) end
+	if not ok then
+		if reason then Notify(ply, reason) end
+		return
+	end
+
+	crate:TakeSupply(item.cost)
 end)
 
 concommand.Add("vn_inv_give", function(ply, _, args)

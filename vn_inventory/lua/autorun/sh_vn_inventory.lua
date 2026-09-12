@@ -17,6 +17,7 @@ function VN_INV.Register(id, data)
 	data.category = data.category or "Sonstiges"
 	data.maxStack = data.maxStack or 10
 	data.consumed = data.consumed ~= false
+	data.cost = data.cost or 1
 
 	if not VN_INV.Items[id] then
 		VN_INV.Order[#VN_INV.Order + 1] = id
@@ -32,11 +33,11 @@ end
 -- Munition -------------------------------------------------------------
 
 local ammoBoxes = {
-	{ id = "ammo_pistol",   name = "Pistolen-Munition", ammo = "Pistol",   amount = 36 },
-	{ id = "ammo_smg",      name = "SMG-Munition",      ammo = "SMG1",     amount = 90 },
-	{ id = "ammo_rifle",    name = "Blaster-Zellen",    ammo = "AR2",      amount = 60 },
-	{ id = "ammo_buckshot", name = "Schrot-Munition",   ammo = "Buckshot", amount = 24 },
-	{ id = "ammo_sniper",   name = "Scharfschützen-Munition", ammo = "357", amount = 18 },
+	{ id = "ammo_pistol",   name = "Pistolen-Munition", ammo = "Pistol",   amount = 36, cost = 2 },
+	{ id = "ammo_smg",      name = "SMG-Munition",      ammo = "SMG1",     amount = 90, cost = 3 },
+	{ id = "ammo_rifle",    name = "Blaster-Zellen",    ammo = "AR2",      amount = 60, cost = 3 },
+	{ id = "ammo_buckshot", name = "Schrot-Munition",   ammo = "Buckshot", amount = 24, cost = 3 },
+	{ id = "ammo_sniper",   name = "Scharfschützen-Munition", ammo = "357", amount = 18, cost = 4 },
 }
 
 for _, box in ipairs(ammoBoxes) do
@@ -45,6 +46,7 @@ for _, box in ipairs(ammoBoxes) do
 		desc = box.amount .. " Schuss",
 		category = "Munition",
 		maxStack = 10,
+		cost = box.cost,
 		OnUse = function(ply)
 			ply:GiveAmmo(box.amount, box.ammo, true)
 			return true
@@ -59,6 +61,7 @@ VN_INV.Register("grenade", {
 	desc = "Splittergranate",
 	category = "Ausrüstung",
 	maxStack = 5,
+	cost = 6,
 	OnUse = function(ply)
 		if not ply:HasWeapon("weapon_frag") then
 			ply:Give("weapon_frag")
@@ -77,6 +80,7 @@ VN_INV.Register("binoculars", {
 	category = "Ausrüstung",
 	maxStack = 1,
 	consumed = false,
+	cost = 10,
 	OnUse = function(ply)
 		ply:SetNWBool("vn_inv_binoculars", not ply:GetNWBool("vn_inv_binoculars", false))
 		return true
@@ -90,6 +94,7 @@ VN_INV.Register("repair_kit", {
 	desc = "Repariert das anvisierte Fahrzeug oder Objekt",
 	category = "Techniker",
 	maxStack = 5,
+	cost = 8,
 	OnUse = function(ply)
 		local ent = ply:GetEyeTrace().Entity
 		if not IsValid(ent) or ent:IsPlayer() then return false, "Kein gültiges Ziel anvisiert." end
