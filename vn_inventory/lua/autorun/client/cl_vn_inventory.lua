@@ -78,11 +78,17 @@ local function BuildFrame(title)
 		draw.SimpleText(title, "VNINV_Title", 16, 12, colText)
 	end
 
+	-- Docking is resolved in the order children are added, so the caller adds
+	-- its header panels first and the filling scroll panel last.
+	return frame
+end
+
+local function AddScroll(frame, topMargin)
 	local scroll = frame:Add("DScrollPanel")
 	scroll:Dock(FILL)
-	scroll:DockMargin(12, 50, 12, 12)
+	scroll:DockMargin(12, topMargin or 8, 12, 12)
 
-	return frame, scroll
+	return scroll
 end
 
 local invFrame
@@ -90,7 +96,8 @@ local invFrame
 local function OpenInventory()
 	if IsValid(invFrame) then invFrame:Remove() end
 
-	local frame, scroll = BuildFrame("Inventar")
+	local frame = BuildFrame("Inventar")
+	local scroll = AddScroll(frame, 50)
 	invFrame = frame
 
 	local function Refresh()
@@ -131,7 +138,7 @@ net.Receive("vn_inv_crate", function()
 	local crate = net.ReadEntity()
 	if not IsValid(crate) then return end
 
-	local frame, scroll = BuildFrame(crate:GetCrateName())
+	local frame = BuildFrame(crate:GetCrateName())
 
 	local status = frame:Add("DPanel")
 	status:Dock(TOP)
@@ -178,8 +185,7 @@ net.Receive("vn_inv_crate", function()
 		net.SendToServer()
 	end
 
-	scroll:DockMargin(12, 8, 12, 12)
-
+	local scroll = AddScroll(frame)
 	local crateType = VN_INV.CrateType(crate)
 
 	for _, id in ipairs(VN_INV.Order) do
@@ -212,9 +218,16 @@ local function BinocularsActive()
 	return IsValid(ply) and ply:Alive() and ply:GetNWBool("vn_inv_binoculars", false)
 end
 
-hook.Add("CalcView", "vn_inv_binoculars", function(_, _, _, fov)
+-- A returned view table replaces the whole view, so origin and angles have to
+-- be passed back through: returning only the fov puts the camera at 0,0,0.
+hook.Add("CalcView", "vn_inv_binoculars", function(_, origin, angles, fov)
 	if not BinocularsActive() then return end
-	return { fov = fov * 0.25 }
+
+	return {
+		origin = origin,
+		angles = angles,
+		fov = fov * 0.25,
+	}
 end)
 
 hook.Add("HUDPaint", "vn_inv_binoculars_overlay", function()

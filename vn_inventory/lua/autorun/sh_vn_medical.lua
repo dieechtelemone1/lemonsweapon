@@ -54,6 +54,7 @@ end
 function VN_MED.Register()
 	local kms = KrakensMedical
 	if registered or not kms or not kms.ItemById then return end
+	if not VN_INV or not VN_INV.Register then return end
 
 	local count = 0
 	for _, entry in ipairs(MEDICAL) do
@@ -85,8 +86,10 @@ if not SERVER then return end
 -- Die Kiste ruft VN_INV.GiveItem auf. Sanitätsartikel werden hier abgefangen
 -- und ins KMS-Inventar umgeleitet, statt im VN-Inventar zu landen; der Rest
 -- geht unverändert an die ursprüngliche Funktion.
-hook.Add("InitPostEntity", "vn_med_bridge", function()
-	if VN_MED.bridged or not VN_INV.GiveItem then return end
+-- VN_INV.GiveItem lives in autorun/server and may not exist yet when this file
+-- runs, so the wrap is attempted both now and once everything is loaded.
+function VN_MED.Bridge()
+	if VN_MED.bridged or not VN_INV or not VN_INV.GiveItem then return end
 	VN_MED.bridged = true
 
 	local giveToInventory = VN_INV.GiveItem
@@ -109,4 +112,7 @@ hook.Add("InitPostEntity", "vn_med_bridge", function()
 		kms.GiveItem(ply, item.kmsItem)
 		return true
 	end
-end)
+end
+
+hook.Add("InitPostEntity", "vn_med_bridge", VN_MED.Bridge)
+VN_MED.Bridge()

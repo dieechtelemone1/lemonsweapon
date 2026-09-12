@@ -11,6 +11,7 @@ if not sql.TableExists("vn_inventory") then
 end
 
 local inventories = {}
+local nextUse = {}
 
 local function Notify(ply, text)
 	net.Start("vn_inv_notify")
@@ -39,7 +40,10 @@ local function Save(steamid)
 end
 
 local function Load(ply)
+	-- Bots have no usable SteamID and would be stored under a nil key.
 	local steamid = ply:SteamID64()
+	if not steamid or steamid == "0" then return end
+
 	local row = sql.QueryValue("SELECT data FROM vn_inventory WHERE steamid = " .. sql.SQLStr(steamid))
 	local inv = row and util.JSONToTable(row) or {}
 
@@ -91,7 +95,10 @@ function VN_INV.TakeItem(ply, id, count)
 end
 
 function VN_INV.Clear(ply)
-	inventories[ply:SteamID64()] = {}
+	local steamid = ply:SteamID64()
+	if not steamid or steamid == "0" then return end
+
+	inventories[steamid] = {}
 	ply:SetNWBool("vn_inv_binoculars", false)
 
 	Save(ply:SteamID64())
@@ -101,7 +108,11 @@ end
 hook.Add("PlayerInitialSpawn", "vn_inv_load", Load)
 
 hook.Add("PlayerDisconnected", "vn_inv_save", function(ply)
+	nextUse[ply] = nil
+
 	local steamid = ply:SteamID64()
+	if not steamid or steamid == "0" then return end
+
 	Save(steamid)
 	inventories[steamid] = nil
 end)
@@ -115,8 +126,6 @@ hook.Add("ShutDown", "vn_inv_save_all", function()
 		Save(steamid)
 	end
 end)
-
-local nextUse = {}
 
 net.Receive("vn_inv_use", function(_, ply)
 	if (nextUse[ply] or 0) > CurTime() then return end
