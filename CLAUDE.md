@@ -13,6 +13,9 @@ Jedes GMod-Addon in diesem Repo bekommt das Präfix `vn_`:
 Keine `README.md` und keine `addon.json` in neuen Addons anlegen – nur die
 Lua-Dateien.
 
+Ausnahme: Entities brauchen zwingend `init.lua`, `cl_init.lua` und `shared.lua`
+– dort trägt nur der Ordner das `vn_`-Präfix (z. B. `entities/vn_supply_crate/`).
+
 ## Dateien ausliefern
 
 Bei Änderungen an einem bestehenden Addon nur die geänderte Lua-Datei
