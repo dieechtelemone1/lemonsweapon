@@ -1,16 +1,25 @@
--- VN Inventory - menus and the binocular view.
+-- VN Inventory - Gitter-Oberfläche, Kistenmenü und Fernglas.
 
 local inventory = {}
 
-surface.CreateFont("VNINV_Title", { font = "Roboto", size = 24, weight = 700, antialias = true })
-surface.CreateFont("VNINV_Item",  { font = "Roboto", size = 18, weight = 600, antialias = true })
-surface.CreateFont("VNINV_Small", { font = "Roboto", size = 14, weight = 500, antialias = true })
+surface.CreateFont("VNINV_Title", { font = "Roboto", size = 22, weight = 600, antialias = true })
+surface.CreateFont("VNINV_Item",  { font = "Roboto", size = 17, weight = 600, antialias = true })
+surface.CreateFont("VNINV_Label", { font = "Roboto", size = 12, weight = 500, antialias = true })
+surface.CreateFont("VNINV_Small", { font = "Roboto", size = 13, weight = 500, antialias = true })
 
-local colBG     = Color(12, 16, 22, 245)
-local colRow    = Color(255, 255, 255, 12)
-local colAccent = Color(255, 158, 44)
-local colText   = Color(232, 236, 240)
-local colDim    = Color(150, 162, 176)
+local colBG      = Color(18, 20, 24, 200)
+local colHeader  = Color(26, 29, 34, 215)
+local colSlot    = Color(255, 255, 255, 14)
+local colSlotOut = Color(255, 255, 255, 22)
+local colHover   = Color(255, 158, 44, 60)
+local colAccent  = Color(255, 158, 44)
+local colText    = Color(232, 236, 240)
+local colDim     = Color(150, 162, 176)
+local colBad     = Color(235, 70, 60)
+
+local COLUMNS = 8
+local SLOT = 58
+local PAD = 4
 
 net.Receive("vn_inv_sync", function()
 	inventory = {}
@@ -27,73 +36,98 @@ net.Receive("vn_inv_notify", function()
 	chat.AddText(colAccent, "[Inventar] ", colText, net.ReadString())
 end)
 
--- actions: Liste von { label, fn }, von rechts nach links angeordnet.
-local function BuildRow(parent, item, count, actions)
-	local row = parent:Add("DPanel")
-	row:Dock(TOP)
-	row:DockMargin(0, 0, 0, 4)
-	row:SetTall(48)
-
-	row.Paint = function(self, w, h)
-		surface.SetDrawColor(colRow)
-		surface.DrawRect(0, 0, w, h)
-		surface.SetDrawColor(colAccent)
-		surface.DrawRect(0, 0, 3, h)
-
-		draw.SimpleText(item.name, "VNINV_Item", 14, 9, colText)
-		draw.SimpleText(item.desc, "VNINV_Small", 14, 28, colDim)
-
-		if count then
-			draw.SimpleText("x" .. count, "VNINV_Item", w - row.textInset, 15, colAccent, TEXT_ALIGN_RIGHT)
-		end
-	end
-
-	row.textInset = 20 + #actions * 88
-
-	for _, action in ipairs(actions) do
-		local button = row:Add("DButton")
-		button:Dock(RIGHT)
-		button:DockMargin(0, 8, 8, 8)
-		button:SetWide(80)
-		button:SetText(action.label)
-		button:SetTextColor(colText)
-		button.Paint = function(self, w, h)
-			surface.SetDrawColor(self:IsHovered() and colAccent or Color(255, 255, 255, 25))
-			surface.DrawRect(0, 0, w, h)
-		end
-		button.DoClick = action.fn
-	end
-
-	return row
-end
-
-local function BuildFrame(title)
-	local frame = vgui.Create("DFrame")
-	frame:SetSize(460, 520)
-	frame:Center()
+local function StyleFrame(frame, title)
 	frame:SetTitle("")
-	frame:ShowCloseButton(true)
+	frame:ShowCloseButton(false)
 	frame:MakePopup()
 
 	frame.Paint = function(self, w, h)
-		surface.SetDrawColor(colBG)
-		surface.DrawRect(0, 0, w, h)
+		draw.RoundedBox(6, 0, 0, w, h, colBG)
+		draw.RoundedBox(6, 0, 0, w, 36, colHeader)
+
 		surface.SetDrawColor(colAccent)
-		surface.DrawRect(0, 0, w, 2)
-		draw.SimpleText(title, "VNINV_Title", 16, 12, colText)
+		for i = 0, 2 do
+			for j = 0, 2 do
+				surface.DrawRect(13 + i * 5, 13 + j * 5, 3, 3)
+			end
+		end
+
+		draw.SimpleText(title, "VNINV_Title", 34, 8, colText)
 	end
 
-	-- Docking is resolved in the order children are added, so the caller adds
-	-- its header panels first and the filling scroll panel last.
+	local close = frame:Add("DButton")
+	close:SetText("")
+	close:SetSize(26, 22)
+	close.Paint = function(self, w, h)
+		draw.RoundedBox(4, 0, 0, w, h, self:IsHovered() and colBad or Color(255, 255, 255, 20))
+		draw.SimpleText("X", "VNINV_Small", w * 0.5, h * 0.5 - 1, colText, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	end
+	close.DoClick = function() frame:Remove() end
+
+	frame.PerformLayout = function(self, w)
+		close:SetPos(w - 33, 7)
+	end
+
 	return frame
 end
 
-local function AddScroll(frame, topMargin)
-	local scroll = frame:Add("DScrollPanel")
-	scroll:Dock(FILL)
-	scroll:DockMargin(12, topMargin or 8, 12, 12)
+-- Ein Gitterfeld: leer oder mit Modell-Symbol, Anzahl und Namen.
+local function BuildSlot(parent, item, count, onClick)
+	local slot = parent:Add("DButton")
+	slot:SetSize(SLOT, SLOT)
+	slot:SetText("")
 
-	return scroll
+	slot.Paint = function(self, w, h)
+		draw.RoundedBox(3, 0, 0, w, h, self:IsHovered() and item and colHover or colSlot)
+
+		surface.SetDrawColor(colSlotOut)
+		surface.DrawOutlinedRect(0, 0, w, h)
+
+		if not item then return end
+
+		if count and count > 1 then
+			draw.SimpleText(count, "VNINV_Label", 4, 2, colAccent)
+		end
+
+		draw.SimpleText(item.name, "VNINV_Label", w * 0.5, h - 13, colText, TEXT_ALIGN_CENTER)
+	end
+
+	if item then
+		local icon = slot:Add("DModelPanel")
+		icon:SetSize(SLOT - 16, SLOT - 26)
+		icon:SetPos(8, 2)
+		icon:SetModel(item.dropModel)
+		icon:SetMouseInputEnabled(false)
+		icon.LayoutEntity = function() end
+
+		local ent = icon:GetEntity()
+		if IsValid(ent) then
+			local mins, maxs = ent:GetRenderBounds()
+			local size = math.max(maxs:Length(), mins:Length())
+			icon:SetCamPos(Vector(size, size, size * 0.7))
+			icon:SetLookAt((mins + maxs) * 0.5)
+			icon:SetFOV(32)
+		end
+
+		slot:SetTooltip(item.desc ~= "" and item.desc or item.name)
+		slot.DoClick = onClick
+	end
+
+	return slot
+end
+
+local function BuildGrid(frame, top)
+	local grid = frame:Add("DIconLayout")
+	grid:Dock(FILL)
+	grid:DockMargin(10, top, 10, 10)
+	grid:SetSpaceX(PAD)
+	grid:SetSpaceY(PAD)
+
+	return grid
+end
+
+local function FrameWidth()
+	return COLUMNS * (SLOT + PAD) + 20 - PAD
 end
 
 local invFrame
@@ -101,51 +135,72 @@ local invFrame
 local function OpenInventory()
 	if IsValid(invFrame) then invFrame:Remove() end
 
-	local frame = BuildFrame("Inventar")
-	local scroll = AddScroll(frame, 50)
+	local rows = math.max(math.ceil(VN_INV.MaxSlots / COLUMNS), 4)
+
+	local frame = vgui.Create("DFrame")
+	frame:SetSize(FrameWidth(), rows * (SLOT + PAD) + 82)
+	frame:Center()
+	StyleFrame(frame, "Inventar")
 	invFrame = frame
 
-	local function Refresh()
-		scroll:Clear()
+	local search = frame:Add("DTextEntry")
+	search:Dock(TOP)
+	search:DockMargin(10, 42, 10, 6)
+	search:SetTall(24)
+	search:SetPlaceholderText("Suche")
+	search:SetDrawBackground(false)
+	search.Paint = function(self, w, h)
+		draw.RoundedBox(3, 0, 0, w, h, colSlot)
+		self:DrawTextEntryText(colText, colAccent, colText)
 
-		local empty = true
-		for _, id in ipairs(VN_INV.Order) do
-			local count = inventory[id]
-			if count and count > 0 then
-				empty = false
-				local item = VN_INV.Get(id)
-
-				BuildRow(scroll, item, count, {
-					{
-						label = "Ablegen",
-						fn = function()
-							net.Start("vn_inv_drop")
-							net.WriteString(id)
-							net.SendToServer()
-						end,
-					},
-					{
-						label = "Benutzen",
-						fn = function()
-							net.Start("vn_inv_use")
-							net.WriteString(id)
-							net.SendToServer()
-						end,
-					},
-				})
-			end
-		end
-
-		if empty then
-			local label = scroll:Add("DLabel")
-			label:Dock(TOP)
-			label:SetTall(40)
-			label:SetFont("VNINV_Item")
-			label:SetTextColor(colDim)
-			label:SetText("Dein Inventar ist leer.")
+		if self:GetText() == "" and not self:HasFocus() then
+			draw.SimpleText("Suche", "VNINV_Small", 6, h * 0.5, colDim, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 		end
 	end
 
+	local grid = BuildGrid(frame, 4)
+
+	local function Refresh()
+		grid:Clear()
+
+		local filter = string.lower(search:GetValue())
+		local used = 0
+
+		for _, id in ipairs(VN_INV.Order) do
+			local count = inventory[id]
+			local item = VN_INV.Get(id)
+
+			if count and count > 0 and (filter == "" or string.find(string.lower(item.name), filter, 1, true)) then
+				used = used + 1
+
+				BuildSlot(grid, item, count, function()
+					local menu = DermaMenu()
+
+					if item.OnUse then
+						menu:AddOption("Benutzen", function()
+							net.Start("vn_inv_use")
+							net.WriteString(id)
+							net.SendToServer()
+						end)
+					end
+
+					menu:AddOption("Ablegen", function()
+						net.Start("vn_inv_drop")
+						net.WriteString(id)
+						net.SendToServer()
+					end)
+
+					menu:Open()
+				end)
+			end
+		end
+
+		for _ = used + 1, rows * COLUMNS do
+			BuildSlot(grid, nil)
+		end
+	end
+
+	search.OnChange = Refresh
 	Refresh()
 	hook.Add("VNInventoryUpdated", frame, Refresh)
 end
@@ -171,16 +226,33 @@ hook.Add("PlayerButtonDown", "vn_inv_key", function(ply, button)
 	OpenInventory()
 end)
 
+-- Kistenmenü -----------------------------------------------------------
+
 net.Receive("vn_inv_crate", function()
 	local crate = net.ReadEntity()
 	if not IsValid(crate) then return end
 
-	local frame = BuildFrame(crate:GetCrateName())
+	local crateType = VN_INV.CrateType(crate)
+
+	local offered = {}
+	for _, id in ipairs(VN_INV.Order) do
+		local item = VN_INV.Get(id)
+		if item.crate == crateType then
+			offered[#offered + 1] = { id = id, item = item }
+		end
+	end
+
+	local rows = math.max(math.ceil(#offered / COLUMNS), 2)
+
+	local frame = vgui.Create("DFrame")
+	frame:SetSize(FrameWidth(), rows * (SLOT + PAD) + 110)
+	frame:Center()
+	StyleFrame(frame, crate:GetCrateName())
 
 	local status = frame:Add("DPanel")
 	status:Dock(TOP)
-	status:DockMargin(12, 44, 12, 0)
-	status:SetTall(52)
+	status:DockMargin(10, 42, 10, 4)
+	status:SetTall(46)
 
 	status.Paint = function(self, w, h)
 		if not IsValid(crate) then return end
@@ -188,31 +260,28 @@ net.Receive("vn_inv_crate", function()
 		local supply = crate:GetSupply()
 		local frac = math.Clamp(supply / VN_LOG.MaxSupply, 0, 1)
 
-		local barColor = Color(90, 200, 110)
+		local bar = Color(90, 200, 110)
 		if supply <= 0 then
-			barColor = Color(235, 70, 60)
+			bar = colBad
 		elseif frac < 0.3 then
-			barColor = Color(255, 196, 60)
+			bar = Color(255, 196, 60)
 		end
 
 		draw.SimpleText("Vorrat", "VNINV_Small", 0, 0, colDim)
 		draw.SimpleText(supply .. " / " .. VN_LOG.MaxSupply, "VNINV_Small", w, 0, colDim, TEXT_ALIGN_RIGHT)
 
-		surface.SetDrawColor(0, 0, 0, 160)
-		surface.DrawRect(0, 18, w, 14)
-		surface.SetDrawColor(barColor)
-		surface.DrawRect(0, 18, w * frac, 14)
+		draw.RoundedBox(3, 0, 20, w, 12, Color(0, 0, 0, 120))
+		draw.RoundedBox(3, 0, 20, w * frac, 12, bar)
 	end
 
 	local request = frame:Add("DButton")
 	request:Dock(TOP)
-	request:DockMargin(12, 4, 12, 0)
-	request:SetTall(30)
+	request:DockMargin(10, 0, 10, 4)
+	request:SetTall(26)
 	request:SetText("Nachschub anfordern")
 	request:SetTextColor(colText)
 	request.Paint = function(self, w, h)
-		surface.SetDrawColor(self:IsHovered() and colAccent or Color(255, 255, 255, 25))
-		surface.DrawRect(0, 0, w, h)
+		draw.RoundedBox(3, 0, 0, w, h, self:IsHovered() and colHover or colSlot)
 	end
 	request.DoClick = function()
 		if not IsValid(crate) then frame:Remove() return end
@@ -222,32 +291,29 @@ net.Receive("vn_inv_crate", function()
 		net.SendToServer()
 	end
 
-	local scroll = AddScroll(frame)
-	local crateType = VN_INV.CrateType(crate)
+	local grid = BuildGrid(frame, 4)
 
-	for _, id in ipairs(VN_INV.Order) do
-		local item = VN_INV.Get(id)
-		if item.crate == crateType then
+	for _, entry in ipairs(offered) do
+		local slot = BuildSlot(grid, entry.item, nil, function()
+			if not IsValid(crate) then frame:Remove() return end
 
-		local row = BuildRow(scroll, item, nil, { {
-			label = "Nehmen",
-			fn = function()
-				if not IsValid(crate) then frame:Remove() return end
+			net.Start("vn_inv_take")
+			net.WriteEntity(crate)
+			net.WriteString(entry.id)
+			net.SendToServer()
+		end)
 
-				net.Start("vn_inv_take")
-				net.WriteEntity(crate)
-				net.WriteString(id)
-				net.SendToServer()
-			end,
-		} })
+		slot:SetTooltip(entry.item.name .. " - " .. entry.item.cost .. " Vorrat")
 
-		row.PaintOver = function(self, w, h)
-			local affordable = IsValid(crate) and crate:GetSupply() >= item.cost
-			draw.SimpleText(item.cost .. " Vorrat", "VNINV_Small", w - self.textInset, 30,
-				affordable and colDim or Color(235, 70, 60), TEXT_ALIGN_RIGHT)
+		slot.PaintOver = function(self, w, h)
+			local affordable = IsValid(crate) and crate:GetSupply() >= entry.item.cost
+			draw.SimpleText(entry.item.cost, "VNINV_Label", w - 4, 2,
+				affordable and colDim or colBad, TEXT_ALIGN_RIGHT)
 		end
+	end
 
-		end
+	for _ = #offered + 1, rows * COLUMNS do
+		BuildSlot(grid, nil)
 	end
 end)
 

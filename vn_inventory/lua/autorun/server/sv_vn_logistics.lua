@@ -1,9 +1,10 @@
--- VN Logistics - supply requests from the field and deliveries from the Navy.
+-- VN Logistics - Anforderungen aus dem Feld und die Lageübersicht der Navy.
+-- Nachschub kommt nie automatisch an: er wird als Container abgesetzt und als
+-- Kiste zur Versorgungskiste getragen.
 
 util.AddNetworkString("vn_log_open")
 util.AddNetworkString("vn_log_data")
 util.AddNetworkString("vn_log_request")
-util.AddNetworkString("vn_log_deliver")
 util.AddNetworkString("vn_log_refresh")
 
 local requests = {}
@@ -47,7 +48,6 @@ local function SendData(ply)
 		net.WriteUInt(math.max(crate:GetSupply(), 0), 16)
 		net.WriteBool(request ~= nil)
 		net.WriteString(request and request.requester or "")
-		net.WriteUInt(request and math.max(math.ceil(request.eta - CurTime()), 0) or 0, 16)
 	end
 
 	net.Send(ply)
@@ -106,55 +106,10 @@ net.Receive("vn_log_request", function(_, ply)
 	requests[crate] = {
 		requester = ply:Nick(),
 		crateName = crate:GetCrateName(),
-		eta = 0,
-		delivered = false,
 	}
 
 	Notify(ply, "Nachschub für " .. crate:GetCrateName() .. " angefordert.")
 	NotifyLogistics("Neue Anforderung: " .. crate:GetCrateName() .. " (von " .. ply:Nick() .. ")")
-end)
-
-net.Receive("vn_log_deliver", function(_, ply)
-	if (nextAction[ply] or 0) > CurTime() then return end
-	nextAction[ply] = CurTime() + 1
-
-	if not VN_LOG.IsLogistics(ply) then return end
-
-	local crate = net.ReadEntity()
-	if not VN_INV.CrateType(crate) then return end
-
-	local request = requests[crate]
-	if request and request.eta > CurTime() then
-		Notify(ply, "Für diese Kiste ist bereits eine Lieferung unterwegs.")
-		return
-	end
-
-	if crate:GetSupply() >= VN_LOG.MaxSupply then
-		Notify(ply, "Diese Kiste ist voll.")
-		return
-	end
-
-	requests[crate] = {
-		requester = request and request.requester or "-",
-		crateName = crate:GetCrateName(),
-		eta = CurTime() + VN_LOG.DeliveryTime,
-	}
-
-	crate:SetRequested(true)
-	Notify(ply, "Lieferung an " .. crate:GetCrateName() .. " abgeschickt.")
-
-	timer.Simple(VN_LOG.DeliveryTime, function()
-		if not IsValid(crate) then return end
-
-		crate:AddSupply(VN_LOG.PackageSize)
-		requests[crate] = nil
-
-		for _, other in ipairs(player.GetAll()) do
-			if other:GetPos():Distance(crate:GetPos()) <= 1000 or VN_LOG.IsLogistics(other) then
-				Notify(other, "Nachschub für " .. crate:GetCrateName() .. " ist eingetroffen.")
-			end
-		end
-	end)
 end)
 
 concommand.Add("vn_log_name", function(ply, _, args)

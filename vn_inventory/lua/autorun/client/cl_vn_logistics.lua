@@ -60,37 +60,17 @@ local function BuildList(scroll)
 
 			draw.SimpleText(data.supply .. " / " .. VN_LOG.MaxSupply, "VNINV_Small", 244, 30, colDim)
 
-			if data.eta > 0 then
-				draw.SimpleText("Lieferung unterwegs - " .. data.eta .. "s", "VNINV_Small", 14, 46, colWarn)
-			elseif data.requested then
+			if data.requested then
 				draw.SimpleText("Angefordert von " .. data.requester, "VNINV_Small", 14, 46, colBad)
 			end
-		end
 
-		local button = row:Add("DButton")
-		button:Dock(RIGHT)
-		button:DockMargin(0, 12, 10, 12)
-		button:SetWide(100)
-		button:SetText(data.eta > 0 and "unterwegs" or "Liefern")
-		button:SetTextColor(colText)
-		button:SetEnabled(data.eta <= 0)
-		button.Paint = function(self, w, h)
-			local col = Color(255, 255, 255, 25)
-			if not self:IsEnabled() then
-				col = Color(255, 255, 255, 10)
-			elseif self:IsHovered() then
-				col = colAccent
+			local needed = math.ceil((VN_LOG.MaxSupply - data.supply) / VN_LOG.BoxSupply)
+			if needed > 0 then
+				draw.SimpleText(needed .. " Kisten", "VNINV_Item", w - 14, 22, colDim, TEXT_ALIGN_RIGHT)
+				draw.SimpleText("bis voll", "VNINV_Small", w - 14, 42, colDim, TEXT_ALIGN_RIGHT)
+			else
+				draw.SimpleText("voll", "VNINV_Item", w - 14, 22, colGood, TEXT_ALIGN_RIGHT)
 			end
-
-			surface.SetDrawColor(col)
-			surface.DrawRect(0, 0, w, h)
-		end
-		button.DoClick = function()
-			if not IsValid(data.entity) then return end
-
-			net.Start("vn_log_deliver")
-			net.WriteEntity(data.entity)
-			net.SendToServer()
 		end
 	end
 end
@@ -111,7 +91,7 @@ net.Receive("vn_log_open", function()
 		surface.SetDrawColor(colAccent)
 		surface.DrawRect(0, 0, w, 2)
 		draw.SimpleText("Logistik-Datapad", "VNINV_Title", 16, 12, colText)
-		draw.SimpleText("Nachschub-Übersicht aller Versorgungskisten", "VNINV_Small", 16, 38, colDim)
+		draw.SimpleText("Container mit dem Werkzeug absetzen, Kisten zu den Versorgungskisten tragen", "VNINV_Small", 16, 38, colDim)
 	end
 
 	local scroll = frame:Add("DScrollPanel")
@@ -142,7 +122,6 @@ net.Receive("vn_log_data", function()
 			supply = net.ReadUInt(16),
 			requested = net.ReadBool(),
 			requester = net.ReadString(),
-			eta = net.ReadUInt(16),
 		}
 	end
 

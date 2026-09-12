@@ -6,7 +6,7 @@ VN_INV = VN_INV or {}
 VN_INV.Items = {}
 VN_INV.Order = {}
 
-VN_INV.MaxSlots = 16
+VN_INV.MaxSlots = 32  -- entspricht 4 Reihen à 8 Feldern im Inventar
 VN_INV.CrateRange = 150
 VN_INV.UseCooldown = 0.4
 VN_INV.DropLifetime = 300  -- Sekunden, bis abgelegte Items wieder verschwinden
