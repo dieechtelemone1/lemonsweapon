@@ -1,11 +1,15 @@
+SWEP.Base = "weapon_base"
+
 SWEP.PrintName = "Logistik-Datapad"
 SWEP.Author = "VN"
 SWEP.Purpose = "Übersicht über alle Versorgungskisten und offenen Anforderungen."
 SWEP.Instructions = "Linksklick öffnet das Datapad."
 SWEP.Category = "VN"
 
+-- Nur im Spawnmenü eingeschränkt; per Job-Loadout gegeben funktioniert es für
+-- jeden, die Berechtigung prüft ohnehin der Server beim Öffnen.
 SWEP.Spawnable = true
-SWEP.AdminOnly = false
+SWEP.AdminOnly = true
 SWEP.Slot = 4
 SWEP.SlotPos = 1
 SWEP.DrawAmmo = false
