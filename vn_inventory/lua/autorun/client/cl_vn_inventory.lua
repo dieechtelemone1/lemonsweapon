@@ -71,7 +71,24 @@ local function StyleFrame(frame, title)
 	return frame
 end
 
--- Ein Gitterfeld: leer oder mit Modell-Symbol, Anzahl und Namen.
+-- Materialien werden zwischengespeichert, weil Material() sonst pro Frame
+-- erneut sucht. Fehlt die Datei, fällt das Feld auf das Modell zurück.
+local iconCache = {}
+
+local function ItemIcon(item)
+	if not item.icon then return nil end
+
+	local mat = iconCache[item.icon]
+	if mat == nil then
+		mat = Material(item.icon, "smooth")
+		iconCache[item.icon] = mat
+	end
+
+	if mat:IsError() then return nil end
+	return mat
+end
+
+-- Ein Gitterfeld: leer oder mit Bild bzw. Modell-Symbol, Anzahl und Namen.
 local function BuildSlot(parent, item, count, onClick)
 	local slot = parent:Add("DButton")
 	slot:SetSize(SLOT, SLOT)
@@ -85,6 +102,14 @@ local function BuildSlot(parent, item, count, onClick)
 
 		if not item then return end
 
+		local mat = ItemIcon(item)
+		if mat then
+			local size = w - 20
+			surface.SetDrawColor(255, 255, 255, 255)
+			surface.SetMaterial(mat)
+			surface.DrawTexturedRect((w - size) * 0.5, 3, size, size)
+		end
+
 		if count and count > 1 then
 			draw.SimpleText(count, "VNINV_Label", 4, 2, colAccent)
 		end
@@ -92,7 +117,7 @@ local function BuildSlot(parent, item, count, onClick)
 		draw.SimpleText(item.name, "VNINV_Label", w * 0.5, h - 13, colText, TEXT_ALIGN_CENTER)
 	end
 
-	if item then
+	if item and not ItemIcon(item) then
 		local icon = slot:Add("DModelPanel")
 		icon:SetSize(SLOT - 16, SLOT - 26)
 		icon:SetPos(8, 2)
@@ -108,7 +133,9 @@ local function BuildSlot(parent, item, count, onClick)
 			icon:SetLookAt((mins + maxs) * 0.5)
 			icon:SetFOV(32)
 		end
+	end
 
+	if item then
 		slot:SetTooltip(item.desc ~= "" and item.desc or item.name)
 		slot.DoClick = onClick
 	end

@@ -7,6 +7,12 @@ util.AddNetworkString("vn_inv_take")
 util.AddNetworkString("vn_inv_notify")
 util.AddNetworkString("vn_inv_drop")
 
+-- Item-Bilder müssen an die Clients ausgeliefert werden, sonst sehen sie nur
+-- das fehlende Material. Alles unter materials/vn_inventory/ wird gesendet.
+for _, name in ipairs(file.Find("materials/vn_inventory/*", "GAME") or {}) do
+	resource.AddFile("materials/vn_inventory/" .. name)
+end
+
 if not sql.TableExists("vn_inventory") then
 	sql.Query("CREATE TABLE vn_inventory (steamid TEXT PRIMARY KEY, data TEXT)")
 end
